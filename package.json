@@ -1,0 +1,32 @@
+{
+  "name": "hase0278-m3u8-proxy",
+  "version": "1.0.0",
+  "description": "lightweight m3u8 proxy created by hase0278",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hase0278/hase0278-m3u8-proxy.git"
+  },
+  "keywords": [
+    "m3u8",
+    "proxy",
+    "CORS",
+    "proxy",
+    "m3u8"
+  ],
+  "author": "hase0278",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hase0278/hase0278-m3u8-proxy/issues"
+  },
+  "homepage": "https://github.com/hase0278/hase0278-m3u8-proxy#readme",
+  "dependencies": {
+    "express": "^4.19.2",
+    "node-fetch": "^3.3.2"
+  }
+}
