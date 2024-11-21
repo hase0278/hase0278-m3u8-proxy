@@ -82,6 +82,7 @@ app.get("/m3u8-proxy", async (req, res) => {
                 if (forceHTTPS) {
                     const proxy = https.request(options, (r) => {
                         r.headers["content-type"] = "video/mp2t";
+                        r.headers["Access-Control-Allow-Origin"] = "*";
                         res.writeHead(r.statusCode ?? 200, r.headers);
 
                         r.pipe(res, {
@@ -95,6 +96,7 @@ app.get("/m3u8-proxy", async (req, res) => {
                 } else {
                     const proxy = http.request(options, (r) => {
                         r.headers["content-type"] = "video/mp2t";
+                        r.headers["Access-Control-Allow-Origin"] = "*";
                         res.writeHead(r.statusCode ?? 200, r.headers);
 
                         r.pipe(res, {
