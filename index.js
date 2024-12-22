@@ -40,6 +40,13 @@ app.get("/m3u8-proxy", async (req, res) => {
             });
         }
 
+        if(url.pathname.endsWith(".mp4")){
+            process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+        }
+        else{
+            process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
+        }
+
         const targetResponse = await fetch(url, {
             headers: headers,
         });
@@ -59,7 +66,7 @@ app.get("/m3u8-proxy", async (req, res) => {
             res.setHeader("Content-Type", targetResponse.headers.get("Content-Type") || "application/vnd.apple.mpegurl");
             res.status(200).send(modifiedM3u8 || await targetResponse.text());
         }
-        else if (url.pathname.endsWith(".ts")) {
+        else if (url.pathname.endsWith(".ts") || url.pathname.endsWith(".mp4")) {
             if (req.query.url.startsWith("https://")) {
                 forceHTTPS = true;
             }
@@ -81,7 +88,17 @@ app.get("/m3u8-proxy", async (req, res) => {
             try {
                 if (forceHTTPS) {
                     const proxy = https.request(options, (r) => {
-                        r.headers["content-type"] = "video/mp2t";
+                        if (url.pathname.endsWith(".mp4")) {
+                            r.headers["content-type"] = "video/mp4";
+                            r.headers["accept-ranges"] = "bytes";
+                            const fileName = req.query.filename || undefined;
+                            if (fileName) {
+                                r.headers['content-disposition'] = `attachment; filename="${fileName}.mp4"`;
+                            }
+                        }
+                        else {
+                            r.headers["content-type"] = "video/mp2t";
+                        }
                         r.headers["Access-Control-Allow-Origin"] = "*";
                         res.writeHead(r.statusCode ?? 200, r.headers);
 
@@ -95,7 +112,17 @@ app.get("/m3u8-proxy", async (req, res) => {
                     });
                 } else {
                     const proxy = http.request(options, (r) => {
-                        r.headers["content-type"] = "video/mp2t";
+                        if(url.pathname.endsWith(".mp4")){
+                            r.headers["content-type"] = "video/mp4";
+                            r.headers["accept-ranges"] = "bytes";
+                            const fileName = req.query.filename || undefined;
+                            if(fileName){
+                                r.headers['content-disposition'] = `attachment; filename="${fileName}.mp4"`;
+                            }
+                        }
+                        else{
+                            r.headers["content-type"] = "video/mp2t";
+                        }
                         r.headers["Access-Control-Allow-Origin"] = "*";
                         res.writeHead(r.statusCode ?? 200, r.headers);
 
@@ -112,7 +139,7 @@ app.get("/m3u8-proxy", async (req, res) => {
                 res.end(e.message);
             }
         }
-        else{
+        else {
             res.setHeader("Content-Type", targetResponse.headers.get("Content-Type"));
             res.status(200).send(await targetResponse.text());
         }
