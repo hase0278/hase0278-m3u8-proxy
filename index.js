@@ -22,27 +22,26 @@ app.get("/m3u8-proxy", async (req, res) => {
     let responseSent = false;
 
     const safeSendResponse = (statusCode, data) => {
-        try{
+        try {
             if (!responseSent) {
                 responseSent = true;
                 res.status(statusCode).send(data);
             }
         }
-        catch(err){
+        catch (err) {
 
         }
     };
     try {
         const url = new URL(req.query.url);
         const headersParam = decodeURIComponent(req.query.headers || "");
-        const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36';
 
         if (!url) {
             safeSendResponse(400, { message: "Invalid URL" });
         }
 
         const headers = {
-            "User-Agent": userAgent
+            "User-Agent": httpUtils.userAgent
         };
         if (headersParam) {
             const additionalHeaders = JSON.parse(headersParam);
@@ -58,7 +57,6 @@ app.get("/m3u8-proxy", async (req, res) => {
         else {
             process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
         }
-
         const targetResponse = await fetch(url, {
             headers: headers,
         });
@@ -67,19 +65,56 @@ app.get("/m3u8-proxy", async (req, res) => {
         let forceHTTPS = false;
         if (url.pathname.endsWith(".m3u8") || targetResponse.headers.get('content-type')?.includes("mpegURL")) {
             modifiedM3u8 = await targetResponse.text();
-            const targetUrlTrimmed = encodeURIComponent(url.origin + url.pathname.replace(/[^/]+\.m3u8$/, "").trim());
+            const targetUrlTrimmed = `${url.origin}${url.pathname.replace(/[^/]+\.m3u8$/, "").trim()}`;
             modifiedM3u8 = modifiedM3u8.split("\n").map((line) => {
+                if (line.startsWith("#EXT-X-KEY")) {
+                    // Regex to extract and replace URI
+                    const uriRegex = /(URI=")([^"]+)(")/;
+
+                    // Extract the current URI
+                    const match = line.match(uriRegex);
+                    if(match){
+                        return line.replace(match[2], `/m3u8-proxy?url=${encodeURIComponent(match[2])}${headersParam ? `&headers=${encodeURIComponent(headersParam)}` : ""}`);
+                    }
+                }
                 if (line.startsWith("#") || line.trim() == '') {
                     return line;
                 }
-                return `/m3u8-proxy?url=${targetUrlTrimmed}${line.startsWith('/') ? encodeURIComponent(line.replace('/', '')) : encodeURIComponent(line)}${headersParam ? `&headers=${encodeURIComponent(headersParam)}` : ""}`;
+                let finalUrl = undefined;
+                if (line.startsWith("http://") || line.startsWith("https://")) {
+                    finalUrl = line;
+                }
+                else if (line.startsWith('/')) {
+                    if (targetUrlTrimmed.endsWith('/')) {
+                        finalUrl = `${targetUrlTrimmed}${line.replace('/', '')}`;
+                    }
+                    else {
+                        finalUrl = `${targetUrlTrimmed}/${line.replace('/', '')}`;
+                    }
+                }
+                else {
+                    if (targetUrlTrimmed.endsWith('/')) {
+                        finalUrl = `${targetUrlTrimmed}${line}`;
+                    }
+                    else {
+                        finalUrl = `${targetUrlTrimmed}/${line}`;
+                    }
+                }
+                return `/m3u8-proxy?url=${encodeURIComponent(finalUrl)}${headersParam ? `&headers=${encodeURIComponent(headersParam)}` : ""}`;
             }).join("\n");
             res.status(200)
                 .set('Access-Control-Allow-Origin', '*')
                 .set('Content-Type', targetResponse.headers.get("Content-Type") || "application/vnd.apple.mpegurl")
                 .send(modifiedM3u8 || await targetResponse.text());
         }
-        else if (url.pathname.endsWith(".ts") || url.pathname.endsWith(".mp4") || targetResponse.headers.get('content-type')?.includes("video")) {
+        else if(url.pathname.endsWith(".key")) {
+            // Get the binary data of the key
+            const keyData = await targetResponse.arrayBuffer();
+            res.setHeader("Content-Type", targetResponse.headers.get("Content-Type") || "application/octet-stream");
+            res.setHeader("Content-Length", targetResponse.headers.get("Content-Length") || 0);
+            safeSendResponse(200, Buffer.from(keyData));
+        }
+        else if (url.pathname.includes('videos') ||url.pathname.endsWith(".ts") || url.pathname.endsWith(".mp4") || targetResponse.headers.get('content-type')?.includes("video")) {
             if (req.query.url.startsWith("https://")) {
                 forceHTTPS = true;
             }
