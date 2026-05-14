@@ -16,22 +16,162 @@
         <meta property="twitter:description" content="Playground for testing Hase0278's m3u8 proxy." />
         <meta property="twitter:image" content="" />
         <style>
-            video {
+            :root {
+                --primary-color: #2563eb;
+                --primary-hover: #1d4ed8;
+                --bg-color: #f8fafc;
+                --card-bg: #ffffff;
+                --text-main: #1e293b;
+                --text-muted: #64748b;
+                --border-color: #e2e8f0;
+            }
+
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                background-color: var(--bg-color);
+                color: var(--text-main);
+                margin: 0;
+                display: flex;
+                justify-content: center;
+                padding: 2rem 1rem;
+            }
+
+            .container {
                 width: 100%;
-                height: 100%;
+                max-width: 1200px;
+                display: flex;
+                flex-direction: column;
+                gap: 2rem;
+            }
+
+            /* Desktop Layout */
+            @media (min-width: 992px) {
+                .container {
+                    flex-direction: row;
+                    align-items: start;
+                }
+
+                .card {
+                    width: 350px;
+                    flex-shrink: 0;
+                    margin-bottom: 0 !important;
+                    position: sticky;
+                    top: 2rem;
+                }
+
+                iframe {
+                    flex-grow: 1;
+                    height: calc(100vh - 4rem);
+                }
+            }
+
+            .card {
+                background: var(--card-bg);
+                padding: 2rem;
+                border-radius: 12px;
+                box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+                border: 1px solid var(--border-color);
+                margin-bottom: 2rem;
+            }
+
+            h1 {
+                margin-top: 0;
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: var(--text-main);
+            }
+
+            p {
+                color: var(--text-muted);
+                font-size: 0.95rem;
+                margin-bottom: 1.5rem;
+                line-height: 1.5;
+            }
+
+            .input-group {
+                margin-bottom: 1.25rem;
+            }
+
+            label {
+                display: block;
+                font-size: 0.875rem;
+                font-weight: 600;
+                margin-bottom: 0.5rem;
+                color: var(--text-main);
+            }
+
+            input[type="text"], textarea {
+                width: 100%;
+                padding: 0.625rem;
+                border: 1px solid var(--border-color);
+                border-radius: 6px;
+                font-family: inherit;
+                font-size: 0.95rem;
+                box-sizing: border-box;
+                transition: border-color 0.2s, box-shadow 0.2s;
+            }
+
+            input[type="text"]:focus, textarea:focus {
+                outline: none;
+                border-color: var(--primary-color);
+                box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            }
+
+            textarea {
+                resize: vertical;
+                min-height: 80px;
+                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            }
+
+            button {
+                background-color: var(--primary-color);
+                color: white;
+                border: none;
+                padding: 0.625rem 1.25rem;
+                font-size: 0.95rem;
+                font-weight: 600;
+                border-radius: 6px;
+                cursor: pointer;
+                transition: background-color 0.2s;
+                width: 100%;
+            }
+
+            button:hover {
+                background-color: var(--primary-hover);
+            }
+
+            iframe {
+                width: 100%;
+                height: 500px;
+                border: 1px solid var(--border-color);
+                border-radius: 12px;
+                background: white;
+                box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
             }
         </style>
     </head>
     <body>
-        <h1>Very bad playground design but its fine</h1>
-        <p>basically put in an m3u8 for the url, and put stringified headers into the headers section. yeah thats it.</p>
-        <label for="url">URL</label>
-        <input type="text" id="url" value="https://www032.vipanicdn.net/streamhls/b9bf60933960deb9a5ddbc93adba8423/ep.4.1721922175.1080.m3u8" />
-        <label for="headers">Headers</label>
-        <textarea id="headers">{"referer": "https://s3taku.com"}</textarea>
-        <button onclick="test()">Test</button>
-        <video id="hls" controls></video>
-        <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+        <div class="container">
+            <div class="card">
+                <h1>M3U8 Proxy Playground</h1>
+                <p>Enter an M3U8 URL and provide stringified JSON headers to test the proxy configuration.</p>
+                
+                <div class="input-group">
+                    <label for="url">Stream URL</label>
+                    <input type="text" id="url" value="https://www032.vipanicdn.net/streamhls/b9bf60933960deb9a5ddbc93adba8423/ep.4.1721922175.1080.m3u8" />
+                </div>
+
+                <div class="input-group">
+                    <label for="headers">Request Headers (JSON)</label>
+                    <textarea id="headers">{"referer": "https://s3taku.com"}</textarea>
+                </div>
+
+                <button onclick="test()">Test Stream</button>
+            </div>
+
+            <iframe id="playerFrame" title="M3U8 Player" src="/player"></iframe>
+        </div>
+
         <script>
             function test() {
                 const url = document.getElementById('url').value;
@@ -47,15 +187,12 @@
                 console.log("Using URL " + url);
                 console.log("Using headers " + JSON.stringify(headers));
 
-                if (Hls.isSupported()) {
-                    var video = document.getElementById('hls');
-                    var hls = new Hls();
-                    hls.loadSource(`/m3u8-proxy?url=${encodeURIComponent(url)}&headers=${encodeURIComponent(JSON.stringify(headers))}`);
-                    hls.attachMedia(video);
-                    hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                        console.log(`/m3u8-proxy?url=${encodeURIComponent(url)}&headers=${encodeURIComponent(JSON.stringify(headers))}`)
-                    });
-                }
+                const urlString = `/m3u8-proxy?url=${encodeURIComponent(url)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
+
+                const playerSrc = `/player?url=${encodeURIComponent(urlString)}`;
+                const iframe = document.getElementById('playerFrame');
+                iframe.src = playerSrc;
+                console.log("Iframe src set to: " + playerSrc);
             }
         </script>
     </body>

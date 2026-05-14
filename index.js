@@ -19,5 +19,11 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'html', 'playground.html'));
 });
 
+app.use(express.static(path.join(__dirname, 'html')));
+
+app.get('/player', (req, res) => {
+    res.sendFile(path.join(__dirname, 'html', 'player.html'));
+});
+
 app.get("/m3u8-proxy", m3u8ProxyRoute);
 app.options("/m3u8-proxy", m3u8ProxyRoute);
