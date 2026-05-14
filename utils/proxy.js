@@ -3,9 +3,23 @@ import http from "node:http";
 import { pipeline } from "node:stream/promises";
 import httpUtils from './http.js';
 
-const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 64 });
-const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 64, rejectUnauthorized: true });
-const httpsAgentInsecure = new https.Agent({ keepAlive: true, maxSockets: 64, rejectUnauthorized: false });
+const AGENT_CONFIG = {
+  keepAlive: true,
+  maxSockets: 32,
+  maxFreeSockets: 8,
+  freeSocketTimeout: 5000,
+  timeout: 15000,
+};
+
+const httpAgent = new http.Agent(AGENT_CONFIG);
+const httpsAgent = new https.Agent({
+  ...AGENT_CONFIG,
+  rejectUnauthorized: true,
+});
+const httpsAgentInsecure = new https.Agent({
+  ...AGENT_CONFIG,
+  rejectUnauthorized: false,
+});
 
 function parseHeaders(headersParam) {
     const BLOCKED = new Set([
@@ -98,7 +112,7 @@ function proxyPipe(req, res, url, headers, { allowInsecureTLS = false, transform
                     resolve();
                 });
                 proxyRes.on("error", (err) => {
-                    console.error("m3u8 buffer error:", err.message);
+                    // console.error("m3u8 buffer error:", err.message);
                     if (!res.headersSent) res.status(502).json({ message: "Upstream reset.", error: err.message });
                     else if (!res.destroyed) res.destroy(err);
                     resolve();
@@ -114,7 +128,7 @@ function proxyPipe(req, res, url, headers, { allowInsecureTLS = false, transform
         });
 
         proxyReq.on("error", (err) => {
-            console.error("Proxy error:", err.message);
+            // console.error("Proxy error:", err.message);
             if (err.code === "ECONNRESET" && !res.headersSent) {
                 // Retry once with a fresh connection
                 return proxyPipe(req, res, url, headers, options).then(resolve);
@@ -198,7 +212,7 @@ export default async function m3u8ProxyRoute(req, res) {
             await proxyPipe(req, res, url, headers);
         }
     } catch (err) {
-        console.error("m3u8-proxy unhandled error:", err);
+        // console.error("m3u8-proxy unhandled error:", err);
         if (!res.headersSent) res.status(500).json({ message: err.message });
         else if (!res.destroyed) res.destroy(err);
     }
